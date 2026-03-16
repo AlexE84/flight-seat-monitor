@@ -3,7 +3,7 @@ const axios = require("axios");
 // EL AL API URL
 const API_URL = "https://www.elal.com/api/SeatAvailability/lang/heb/flights";
 
-// List of European airports (optional filter)
+// Optional Europe filter
 const EUROPE_AIRPORTS = [
   "LHR","LGW","CDG","AMS","FRA","MUC","ZRH","VIE","MAD","BCN","FCO","MXP",
   "ATH","PRG","BUD","WAW","OTP","SOF","CPH","OSL","ARN","HEL","DUB",
@@ -43,7 +43,7 @@ function extractRoutes(obj) {
 }
 
 /**
- * Find flights with 4+ seats, optionally TLV → Europe
+ * Find flights with 4+ seats, optional TLV->Europe filter
  */
 function findSeats(data) {
   if (!Array.isArray(data)) {
@@ -51,18 +51,31 @@ function findSeats(data) {
     return [];
   }
 
-  let flights = [];
+  const flights = [];
 
   data.forEach(route => {
     if (!route.flightsDates || !Array.isArray(route.flightsDates)) return;
 
-    let availableDates = [];
+    // Uncomment these lines if you want TLV->Europe filter
+    // if (route.routeFrom !== "TLV") return;
+    // if (!EUROPE_AIRPORTS.includes(route.routeTo)) return;
+
+    const availableDates = [];
 
     route.flightsDates.forEach(date => {
-      if (!date.seatAvailability || !Array.isArray(date.seatAvailability)) return;
+      let totalSeats = 0;
 
-      // sum all seats across all classes for this date
-      const totalSeats = date.seatAvailability.reduce((sum, s) => sum + (s.seatCount || 0), 0);
+      // Case 1: direct seatCount
+      if (typeof date.seatCount === "number") totalSeats = date.seatCount;
+
+      // Case 2: nested seatAvailability array
+      if (date.seatAvailability && Array.isArray(date.seatAvailability)) {
+        const seatsFromArray = date.seatAvailability.reduce(
+          (sum, s) => sum + (s.seatCount || 0),
+          0
+        );
+        totalSeats = Math.max(totalSeats, seatsFromArray);
+      }
 
       if (totalSeats >= 4) {
         availableDates.push({ date: date.flightsDate, seats: totalSeats });
@@ -114,7 +127,7 @@ function buildMessages(flights) {
 }
 
 /**
- * Send Telegram message
+ * Send Telegram messages
  */
 async function sendTelegram(messages) {
   const token = process.env.TELEGRAM_TOKEN;
@@ -127,7 +140,7 @@ async function sendTelegram(messages) {
         text: msg
       });
       console.log("Telegram response:", res.data.ok ? "OK" : res.data);
-      await new Promise(r => setTimeout(r, 1000)); // small delay to avoid Telegram flood
+      await new Promise(r => setTimeout(r, 1000));
     } catch (e) {
       console.error("Failed to send Telegram message:", e.message);
     }
@@ -135,7 +148,7 @@ async function sendTelegram(messages) {
 }
 
 /**
- * Burst polling: check API 3 times quickly to catch hidden inventory
+ * Burst polling: check API 3 times quickly
  */
 async function burstCheck() {
   let combinedFlights = [];
@@ -144,10 +157,10 @@ async function burstCheck() {
     const routes = extractRoutes(raw);
     const flights = findSeats(routes);
     combinedFlights.push(...flights);
-    await new Promise(r => setTimeout(r, 15000)); // wait 15s between polls
+    await new Promise(r => setTimeout(r, 15000)); // 15s delay
   }
 
-  // Remove duplicate flights by carrier+flight+dep
+  // Remove duplicate flights
   const uniqueFlights = [];
   const seen = new Set();
   combinedFlights.forEach(f => {
