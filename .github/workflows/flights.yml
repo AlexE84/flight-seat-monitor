@@ -20,8 +20,8 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Test EL AL API
-        run: curl -v https://www.elal.com/api/SeatAvailability/lang/heb/flights
+      - name: Fetch EL AL flights JSON
+        run: curl -s https://www.elal.com/api/SeatAvailability/lang/heb/flights -o flights.json
     
       - name: Run flight monitor
         run: node checkFlights.js
