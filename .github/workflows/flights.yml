@@ -6,13 +6,9 @@ on:
   workflow_dispatch:
 
 jobs:
-
   monitor:
-
     runs-on: ubuntu-latest
-
     steps:
-
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -24,7 +20,7 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Run monitor
+      - name: Run flight monitor
         run: node checkFlights.js
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
