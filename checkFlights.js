@@ -36,9 +36,9 @@ let flights=[];
 
 data.forEach(route=>{
 
-if(route.routeFrom!=="TLV") return;
+//if(route.routeFrom!=="TLV") return;
 
-if(!EUROPE_AIRPORTS.includes(route.routeTo)) return;
+//if(!EUROPE_AIRPORTS.includes(route.routeTo)) return;
 
 if(!route.flightsDates) return;
 
