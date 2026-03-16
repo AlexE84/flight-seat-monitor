@@ -50,7 +50,7 @@ function findSeatsInFlights(flights) {
         if (sumSeats > totalSeats) totalSeats = sumSeats;
       }
 
-      if (totalSeats >= 4) {
+      if (totalSeats >= 0) {
         availableDates.push({
           flightsDate: date.flightsDate,
           seatCount: totalSeats
