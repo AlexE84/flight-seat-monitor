@@ -16,8 +16,6 @@ const EUROPE_AIRPORTS = [
 async function fetchFlights() {
   for (let i = 0; i < 3; i++) {
     try {
-      const res = await axios.get(API_URL, { timeout: 15000 });
-
       const res = await axios.get(API_URL, {
         timeout: 15000,
         headers: {
