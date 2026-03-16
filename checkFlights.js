@@ -1,10 +1,7 @@
 const fs = require("fs");
 const axios = require("axios");
 
-// EL AL API URL
-const API_URL = "https://www.elal.com/api/SeatAvailability/lang/heb/flights";
-
-// Optional Europe filter
+// Optional: list of Europe airports if you want to filter further
 const EUROPE_AIRPORTS = [
   "LHR","LGW","CDG","AMS","FRA","MUC","ZRH","VIE","MAD","BCN","FCO","MXP",
   "ATH","PRG","BUD","WAW","OTP","SOF","CPH","OSL","ARN","HEL","DUB",
@@ -12,104 +9,71 @@ const EUROPE_AIRPORTS = [
 ];
 
 /**
- * Fetch API with retry
+ * Read flights JSON from the file downloaded by curl
  */
-async function fetchFlights() {
-  for (let i = 0; i < 3; i++) {
-    try {
-      //const res = await axios.get(API_URL, {
-      //  timeout: 15000,
-      //  headers: {
-      //    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/146.0.0.0 Safari/537.36"
-      //  }
-      //});
-
-      const res = fs.readFileSync("flights.json", "utf8");
-      console.log("RAW API response sample:", JSON.stringify(res)); // first 1000 chars
-      
-      //return res.data;
-      return JSON.parse(res);
-    } catch (e) {
-      console.log("API fetch failed, retrying...", i + 1);
-      await new Promise(r => setTimeout(r, 5000));
-    }
-  }
-  throw new Error("API fetch failed 3 times");
+function fetchFlightsFromFile() {
+  const raw = fs.readFileSync("flights.json", "utf8");
+  return JSON.parse(raw);
 }
 
 /**
- * Recursively extract array of routes from API response
+ * Extract all flights from TLV (flightsFromIsrael)
  */
-function extractRoutes(obj) {
-  if (Array.isArray(obj)) return obj;
-  if (!obj || typeof obj !== "object") return [];
-  for (const key in obj) {
-    if (Array.isArray(obj[key])) return obj[key];
-    if (typeof obj[key] === "object") {
-      const res = extractRoutes(obj[key]);
-      if (res && res.length > 0) return res;
-    }
-  }
-  return [];
+function extractFlightsFromIsrael(apiJson) {
+  if (!apiJson || !Array.isArray(apiJson.flightsFromIsrael)) return [];
+  return apiJson.flightsFromIsrael.flatMap(originBlock => {
+    return Array.isArray(originBlock.flights) ? originBlock.flights : [];
+  });
 }
 
 /**
- * Find flights with 4+ seats, optional TLV->Europe filter
+ * Filter flights by available seats (>=4)
  */
-function findSeats(data) {
-  if (!Array.isArray(data)) {
-    console.log("Invalid route list");
-    return [];
-  }
+function findSeatsInFlights(flights) {
+  const matches = [];
 
-  const flights = [];
+  flights.forEach(route => {
+    if (route.routeFrom !== "TLV") return; // only outbound flights
 
-  data.forEach(route => {
-    if (!route.flightsDates || !Array.isArray(route.flightsDates)) return;
-
-    // Uncomment these lines if you want TLV->Europe filter
-    // if (route.routeFrom !== "TLV") return;
-    // if (!EUROPE_AIRPORTS.includes(route.routeTo)) return;
+    if (!Array.isArray(route.flightsDates)) return;
 
     const availableDates = [];
 
     route.flightsDates.forEach(date => {
-      let totalSeats = 0;
+      let totalSeats = typeof date.seatCount === "number" ? date.seatCount : 0;
 
-      // Case 1: direct seatCount
-      if (typeof date.seatCount === "number") totalSeats = date.seatCount;
-
-      // Case 2: nested seatAvailability array
-      if (date.seatAvailability && Array.isArray(date.seatAvailability)) {
-        const seatsFromArray = date.seatAvailability.reduce(
+      if (Array.isArray(date.seatAvailability)) {
+        const sumSeats = date.seatAvailability.reduce(
           (sum, s) => sum + (s.seatCount || 0),
           0
         );
-        totalSeats = Math.max(totalSeats, seatsFromArray);
+        if (sumSeats > totalSeats) totalSeats = sumSeats;
       }
 
       if (totalSeats >= 4) {
-        availableDates.push({ date: date.flightsDate, seats: totalSeats });
+        availableDates.push({
+          flightsDate: date.flightsDate,
+          seatCount: totalSeats
+        });
       }
     });
 
     if (availableDates.length > 0) {
-      flights.push({
-        carrier: route.flightCarrier,
-        flight: route.flightNumber,
-        from: route.routeFrom,
-        to: route.routeTo,
-        dep: route.segmentDepTime,
-        dates: availableDates
+      matches.push({
+        flightCarrier: route.flightCarrier,
+        flightNumber: route.flightNumber,
+        routeTo: route.routeTo,
+        segmentDepTime: route.segmentDepTime,
+        availableDates
       });
     }
   });
 
-  return flights;
+  return matches;
 }
 
 /**
- * Build Telegram messages, split if too long
+ * Build messages for Telegram
  */
 function buildMessages(flights) {
   const maxLength = 3500;
@@ -117,11 +81,9 @@ function buildMessages(flights) {
   let msg = "✈ EL AL seat alert (4+ seats)\n\n";
 
   flights.forEach(f => {
-    let section = `Flight ${f.carrier}${f.flight}\n${f.from} → ${f.to}\nDeparture: ${f.dep}\n`;
-    f.dates.forEach(d => {
-      let line = `• ${d.date} (${d.seats} seats)\n`;
-      if (d.seats >= 7) line += "🔥 possible inventory release\n";
-      section += line;
+    let section = `Flight ${f.flightCarrier}${f.flightNumber}\n${"TLV"} → ${f.routeTo}\nDeparture: ${f.segmentDepTime}\n`;
+    f.availableDates.forEach(d => {
+      section += `• ${d.flightsDate} (${d.seatCount} seats)\n`;
     });
     section += "\n";
 
@@ -138,7 +100,7 @@ function buildMessages(flights) {
 }
 
 /**
- * Send Telegram messages
+ * Send messages via Telegram
  */
 async function sendTelegram(messages) {
   const token = process.env.TELEGRAM_TOKEN;
@@ -159,45 +121,22 @@ async function sendTelegram(messages) {
 }
 
 /**
- * Burst polling: check API 3 times quickly
- */
-async function burstCheck() {
-  let combinedFlights = [];
-  for (let i = 0; i < 3; i++) {
-    const raw = await fetchFlights();
-    const routes = extractRoutes(raw);
-    const flights = findSeats(routes);
-    combinedFlights.push(...flights);
-    await new Promise(r => setTimeout(r, 15000)); // 15s delay
-  }
-
-  // Remove duplicate flights
-  const uniqueFlights = [];
-  const seen = new Set();
-  combinedFlights.forEach(f => {
-    const key = `${f.carrier}-${f.flight}-${f.dep}-${f.to}`;
-    if (!seen.has(key)) {
-      uniqueFlights.push(f);
-      seen.add(key);
-    }
-  });
-  return uniqueFlights;
-}
-
-/**
- * Main
+ * Main logic
  */
 async function main() {
   try {
     console.log("Checking flights...");
-    const flights = await burstCheck();
 
-    if (!flights || flights.length === 0) {
-      console.log("No seats found");
+    const rawJSON = fetchFlightsFromFile();
+    const flightsFromIsrael = extractFlightsFromIsrael(rawJSON);
+    const goodFlights = findSeatsInFlights(flightsFromIsrael);
+
+    if (goodFlights.length === 0) {
+      console.log("No flights with 4+ seats found.");
       return;
     }
 
-    const messages = buildMessages(flights);
+    const messages = buildMessages(goodFlights);
     await sendTelegram(messages);
     console.log("Telegram alert sent!");
   } catch (e) {
