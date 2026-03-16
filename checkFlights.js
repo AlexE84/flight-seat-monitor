@@ -1,7 +1,7 @@
 const fs = require("fs");
 const axios = require("axios");
 
-// Optional: list of Europe airports if you want to filter further
+// Optional: list of Europe airports if you want to filter further - not in use
 const EUROPE_AIRPORTS = [
   "LHR","LGW","CDG","AMS","FRA","MUC","ZRH","VIE","MAD","BCN","FCO","MXP",
   "ATH","PRG","BUD","WAW","OTP","SOF","CPH","OSL","ARN","HEL","DUB",
