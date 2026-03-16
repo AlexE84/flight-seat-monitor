@@ -19,9 +19,16 @@ function fetchFlightsFromFile() {
 /**
  * Extract all flights from TLV (flightsFromIsrael)
  */
+//function extractFlightsFromIsrael(apiJson) {
+//  if (!apiJson || !Array.isArray(apiJson.flightsFromIsrael)) return [];
+//  return apiJson.flightsFromIsrael.flatMap(originBlock => {
+//    return Array.isArray(originBlock.flights) ? originBlock.flights : [];
+//  });
+//}
+
 function extractFlightsFromIsrael(apiJson) {
-  if (!apiJson || !Array.isArray(apiJson.flightsFromIsrael)) return [];
-  return apiJson.flightsFromIsrael.flatMap(originBlock => {
+  if (!apiJson || !Array.isArray(apiJson.flightsToIsrael)) return [];
+  return apiJson.flightsToIsrael.flatMap(originBlock => {
     return Array.isArray(originBlock.flights) ? originBlock.flights : [];
   });
 }
