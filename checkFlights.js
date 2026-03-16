@@ -40,7 +40,7 @@ function findSeatsInFlights(flights) {
   const matches = [];
 
   flights.forEach(route => {
-    if (route.routeFrom !== "TLV") return; // only outbound flights
+    //if (route.routeFrom !== "TLV") return; // only outbound flights
 
     if (!Array.isArray(route.flightsDates)) return;
 
