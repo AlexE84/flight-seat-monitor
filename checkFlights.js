@@ -17,6 +17,7 @@ async function fetchFlights() {
   for (let i = 0; i < 3; i++) {
     try {
       const res = await axios.get(API_URL, { timeout: 15000 });
+      console.log("RAW API response sample:", JSON.stringify(res).slice(0,1000)); // first 1000 chars
       return res.data;
     } catch (e) {
       console.log("API fetch failed, retrying...", i + 1);
