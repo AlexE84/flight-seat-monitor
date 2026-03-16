@@ -3,7 +3,7 @@ const axios = require("axios");
 // EL AL API URL
 const API_URL = "https://www.elal.com/api/SeatAvailability/lang/heb/flights";
 
-// List of European airports (can expand if needed)
+// List of European airports (optional filter)
 const EUROPE_AIRPORTS = [
   "LHR","LGW","CDG","AMS","FRA","MUC","ZRH","VIE","MAD","BCN","FCO","MXP",
   "ATH","PRG","BUD","WAW","OTP","SOF","CPH","OSL","ARN","HEL","DUB",
@@ -43,25 +43,29 @@ function extractRoutes(obj) {
 }
 
 /**
- * Find flights with 4+ seats, TLV → Europe
+ * Find flights with 4+ seats, optionally TLV → Europe
  */
 function findSeats(data) {
   if (!Array.isArray(data)) {
-    console.log("Invalid route list:", data);
+    console.log("Invalid route list");
     return [];
   }
+
   let flights = [];
 
   data.forEach(route => {
-    // Check TLV → Europe
-    //if (route.routeFrom !== "TLV") return;
-    //if (!EUROPE_AIRPORTS.includes(route.routeTo)) return;
     if (!route.flightsDates || !Array.isArray(route.flightsDates)) return;
 
     let availableDates = [];
+
     route.flightsDates.forEach(date => {
-      if (date.seatCount >= 4) {
-        availableDates.push({ date: date.flightsDate, seats: date.seatCount });
+      if (!date.seatAvailability || !Array.isArray(date.seatAvailability)) return;
+
+      // sum all seats across all classes for this date
+      const totalSeats = date.seatAvailability.reduce((sum, s) => sum + (s.seatCount || 0), 0);
+
+      if (totalSeats >= 4) {
+        availableDates.push({ date: date.flightsDate, seats: totalSeats });
       }
     });
 
@@ -69,6 +73,7 @@ function findSeats(data) {
       flights.push({
         carrier: route.flightCarrier,
         flight: route.flightNumber,
+        from: route.routeFrom,
         to: route.routeTo,
         dep: route.segmentDepTime,
         dates: availableDates
@@ -88,7 +93,7 @@ function buildMessages(flights) {
   let msg = "✈ EL AL seat alert (4+ seats)\n\n";
 
   flights.forEach(f => {
-    let section = `Flight ${f.carrier}${f.flight}\nTLV → ${f.to}\nDeparture: ${f.dep}\n`;
+    let section = `Flight ${f.carrier}${f.flight}\n${f.from} → ${f.to}\nDeparture: ${f.dep}\n`;
     f.dates.forEach(d => {
       let line = `• ${d.date} (${d.seats} seats)\n`;
       if (d.seats >= 7) line += "🔥 possible inventory release\n";
@@ -122,7 +127,7 @@ async function sendTelegram(messages) {
         text: msg
       });
       console.log("Telegram response:", res.data.ok ? "OK" : res.data);
-      await new Promise(r => setTimeout(r, 1000)); // small delay to avoid spam
+      await new Promise(r => setTimeout(r, 1000)); // small delay to avoid Telegram flood
     } catch (e) {
       console.error("Failed to send Telegram message:", e.message);
     }
@@ -130,7 +135,7 @@ async function sendTelegram(messages) {
 }
 
 /**
- * Burst polling: check API 3 times quickly to catch hidden availability
+ * Burst polling: check API 3 times quickly to catch hidden inventory
  */
 async function burstCheck() {
   let combinedFlights = [];
@@ -141,11 +146,12 @@ async function burstCheck() {
     combinedFlights.push(...flights);
     await new Promise(r => setTimeout(r, 15000)); // wait 15s between polls
   }
+
   // Remove duplicate flights by carrier+flight+dep
   const uniqueFlights = [];
   const seen = new Set();
   combinedFlights.forEach(f => {
-    const key = `${f.carrier}-${f.flight}-${f.dep}`;
+    const key = `${f.carrier}-${f.flight}-${f.dep}-${f.to}`;
     if (!seen.has(key)) {
       uniqueFlights.push(f);
       seen.add(key);
