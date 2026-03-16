@@ -54,8 +54,8 @@ function findSeats(data) {
 
   data.forEach(route => {
     // Check TLV → Europe
-    if (route.routeFrom !== "TLV") return;
-    if (!EUROPE_AIRPORTS.includes(route.routeTo)) return;
+    //if (route.routeFrom !== "TLV") return;
+    //if (!EUROPE_AIRPORTS.includes(route.routeTo)) return;
     if (!route.flightsDates || !Array.isArray(route.flightsDates)) return;
 
     let availableDates = [];
