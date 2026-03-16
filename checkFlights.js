@@ -25,7 +25,7 @@ async function fetchFlights() {
       //});
 
       const res = fs.readFileSync("flights.json", "utf8");
-      console.log("RAW API response sample:", JSON.stringify(res).slice(0,1000)); // first 1000 chars
+      console.log("RAW API response sample:", JSON.stringify(res)); // first 1000 chars
       
       //return res.data;
       return JSON.parse(res);
