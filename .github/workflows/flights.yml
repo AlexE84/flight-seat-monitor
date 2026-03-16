@@ -2,27 +2,27 @@ name: Flight Monitor
 
 on:
   schedule:
-    - cron: "*/5 * * * *"
+    - cron: "*/5 * * * *"  # every 5 minutes
   workflow_dispatch:
 
 jobs:
-  monitor:
+  check-flights:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - name: Install Node.js
+        uses: actions/setup-node@v3
         with:
           node-version: 20
 
       - name: Install dependencies
-        run: npm install
+        run: npm install axios
 
       - name: Fetch EL AL flights JSON
         run: curl -s https://www.elal.com/api/SeatAvailability/lang/heb/flights -o flights.json
-    
+
       - name: Run flight monitor
         run: node checkFlights.js
         env:
