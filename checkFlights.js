@@ -19,16 +19,9 @@ function fetchFlightsFromFile() {
 /**
  * Extract all flights from TLV (flightsFromIsrael)
  */
-//function extractFlightsFromIsrael(apiJson) {
-//  if (!apiJson || !Array.isArray(apiJson.flightsFromIsrael)) return [];
-//  return apiJson.flightsFromIsrael.flatMap(originBlock => {
-//    return Array.isArray(originBlock.flights) ? originBlock.flights : [];
-//  });
-//}
-
 function extractFlightsFromIsrael(apiJson) {
-  if (!apiJson || !Array.isArray(apiJson.flightsToIsrael)) return [];
-  return apiJson.flightsToIsrael.flatMap(originBlock => {
+  if (!apiJson || !Array.isArray(apiJson.flightsFromIsrael)) return [];
+  return apiJson.flightsFromIsrael.flatMap(originBlock => {
     return Array.isArray(originBlock.flights) ? originBlock.flights : [];
   });
 }
@@ -40,8 +33,10 @@ function findSeatsInFlights(flights) {
   const matches = [];
 
   flights.forEach(route => {
-    //if (route.routeFrom !== "TLV") return; // only outbound flights
+    if (route.routeFrom !== "TLV") return; // only outbound flights
 
+    if (!EUROPE_AIRPORTS.includes(route.routeTo)) return;
+    
     if (!Array.isArray(route.flightsDates)) return;
 
     const availableDates = [];
@@ -88,7 +83,7 @@ function buildMessages(flights) {
   let msg = "✈ EL AL seat alert (4+ seats)\n\n";
 
   flights.forEach(f => {
-    let section = `Flight ${f.flightCarrier}${f.flightNumber}\n${"TLV"} → ${f.routeTo}\nDeparture: ${f.segmentDepTime}\n`;
+    let section = `Flight ${f.flightNumber}\n${"TLV"} → ${f.routeTo}\nDeparture: ${f.segmentDepTime}\n`;
     f.availableDates.forEach(d => {
       section += `• ${d.flightsDate} (${d.seatCount} seats)\n`;
     });
