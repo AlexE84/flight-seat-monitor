@@ -1,3 +1,4 @@
+const fs = require("fs");
 const axios = require("axios");
 
 // EL AL API URL
@@ -16,14 +17,18 @@ const EUROPE_AIRPORTS = [
 async function fetchFlights() {
   for (let i = 0; i < 3; i++) {
     try {
-      const res = await axios.get(API_URL, {
-        timeout: 15000,
-        headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/146.0.0.0 Safari/537.36"
-        }
-      });
+      //const res = await axios.get(API_URL, {
+      //  timeout: 15000,
+      //  headers: {
+      //    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/146.0.0.0 Safari/537.36"
+      //  }
+      //});
+
+      const res = fs.readFileSync("flights.json");
       console.log("RAW API response sample:", JSON.stringify(res).slice(0,1000)); // first 1000 chars
-      return res.data;
+      
+      //return res.data;
+      return JSON.parse(res);
     } catch (e) {
       console.log("API fetch failed, retrying...", i + 1);
       await new Promise(r => setTimeout(r, 5000));
