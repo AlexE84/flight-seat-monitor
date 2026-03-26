@@ -27,13 +27,23 @@ function extractFlightsFromIsrael(apiJson) {
 }
 
 /**
+ * Extract all flights to TLV (flightsToIsrael)
+ */
+function extractFlightsToIsrael(apiJson) {
+  if (!apiJson || !Array.isArray(apiJson.flightsToIsrael)) return [];
+  return apiJson.flightsToIsrael.flatMap(originBlock => {
+    return Array.isArray(originBlock.flights) ? originBlock.flights : [];
+  });
+}
+
+/**
  * Filter flights by available seats (>=4)
  */
 function findSeatsInFlights(flights) {
   const matches = [];
 
   flights.forEach(route => {
-    if (route.routeFrom !== "TLV") return; // only outbound flights
+    //if (route.routeFrom !== "TLV") return; // only outbound flights
 
     //if (!EUROPE_AIRPORTS.includes(route.routeTo)) return;
     
@@ -52,7 +62,7 @@ function findSeatsInFlights(flights) {
         if (sumSeats > totalSeats) totalSeats = sumSeats;
       }
 
-      if (totalSeats >= 3) {
+      if (totalSeats >= 4) {
         availableDates.push({
           flightsDate: date.flightsDate,
           seatCount: totalSeats
@@ -64,6 +74,7 @@ function findSeatsInFlights(flights) {
       matches.push({
         flightCarrier: route.flightCarrier,
         flightNumber: route.flightNumber,
+        routeFrom: route.routeFrom,
         routeTo: route.routeTo,
         segmentDepTime: route.segmentDepTime,
         availableDates
@@ -83,7 +94,7 @@ function buildMessages(flights) {
   let msg = "✈ EL AL seat alert (4+ seats)\n\n";
 
   flights.forEach(f => {
-    let section = `Flight ${f.flightNumber}\n${"TLV"} → ${f.routeTo}\nDeparture: ${f.segmentDepTime}\n`;
+    let section = `Flight ${f.flightNumber}\n${f.routeFrom} → ${f.routeTo}\nDeparture: ${f.segmentDepTime}\n`;
     f.availableDates.forEach(d => {
       section += `• ${d.flightsDate} (${d.seatCount} seats)\n`;
     });
@@ -130,8 +141,8 @@ async function main() {
     console.log("Checking flights...");
 
     const rawJSON = fetchFlightsFromFile();
-    const flightsFromIsrael = extractFlightsFromIsrael(rawJSON);
-    const goodFlights = findSeatsInFlights(flightsFromIsrael);
+    const flightsToIsrael = extractFlightsToIsrael(rawJSON);
+    const goodFlights = findSeatsInFlights(flightsToIsrael);
 
     if (goodFlights.length === 0) {
       console.log("No flights with 4+ seats found.");
