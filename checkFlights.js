@@ -45,7 +45,7 @@ function findSeatsInFlights(flights) {
   flights.forEach(route => {
     //if (route.routeFrom !== "TLV") return; // only outbound flights
 
-    //if (!EUROPE_AIRPORTS.includes(route.routeTo)) return;
+    if (!EUROPE_AIRPORTS.includes(route.routeFrom)) return;
     
     if (!Array.isArray(route.flightsDates)) return;
 
