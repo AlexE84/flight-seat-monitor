@@ -63,10 +63,13 @@ function findSeatsInFlights(flights) {
       }
 
       if (totalSeats >= 4) {
-        availableDates.push({
-          flightsDate: date.flightsDate,
-          seatCount: totalSeats
-        });
+        const flightDate = new Date("2026-" + "27.03".split(".").reverse().join("-"));
+        if (flightDate >= new Date("2026-04-01 00:00:00")) {
+          availableDates.push({
+            flightsDate: date.flightsDate,
+            seatCount: totalSeats
+          });
+        }
       }
     });
 
