@@ -145,6 +145,7 @@ async function main() {
 
     const rawJSON = fetchFlightsFromFile();
     const flightsToIsrael = extractFlightsToIsrael(rawJSON);
+    console.log("flightsToIsrael: " + JSON.stringify(flightsToIsrael));
     const goodFlights = findSeatsInFlights(flightsToIsrael);
 
     if (goodFlights.length === 0) {
