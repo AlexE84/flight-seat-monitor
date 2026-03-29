@@ -63,6 +63,7 @@ function findSeatsInFlights(flights) {
       }
 
       if (totalSeats >= 4) {
+        console.log("Check Date");
         const flightDate = new Date("2026-" + "27.03".split(".").reverse().join("-"));
         if (flightDate >= new Date("2026-04-01 00:00:00")) {
           availableDates.push({
@@ -145,7 +146,6 @@ async function main() {
 
     const rawJSON = fetchFlightsFromFile();
     const flightsToIsrael = extractFlightsToIsrael(rawJSON);
-    console.log("flightsToIsrael: " + JSON.stringify(flightsToIsrael));
     const goodFlights = findSeatsInFlights(flightsToIsrael);
 
     if (goodFlights.length === 0) {
