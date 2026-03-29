@@ -64,7 +64,7 @@ function findSeatsInFlights(flights) {
 
       if (totalSeats >= 4) {
         const flightDate = new Date("2026-" + date.flightsDate.split(".").reverse().join("-"));
-        if (flightDate >= new Date("2026-04-01 00:00:00")) {
+        if (flightDate >= new Date("2026-04-04 00:00:00")) {
           availableDates.push({
             flightsDate: date.flightsDate,
             seatCount: totalSeats
